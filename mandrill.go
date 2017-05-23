@@ -136,6 +136,18 @@ type Message struct {
 	SendAt string `json:"-"`
 }
 
+type Template struct {
+	Key       string   `json:"key"`
+	Name      string   `json:"name"`
+	FromEmail string   `json:"from_email,omitempty"`
+	FromName  string   `json:"from_name,omitempty"`
+	Subject   string   `json:"subject,omitempty"`
+	Code      string   `json:"code,omitempty"`
+	Text      string   `json:"text,omitempty"`
+	Publish   bool     `json:"publish"`
+	Labels    []string `json:"lables"`
+}
+
 // To is a single recipient's information.
 type To struct {
 	// the email address of the recipient
@@ -301,6 +313,37 @@ func (c *Client) sendMessagePayload(data interface{}, path string) (responses []
 	responses = make([]*Response, 0)
 	err = json.Unmarshal(body, &responses)
 	return responses, err
+}
+
+func (c *Client) TemplatesCallPayload(data *Template, path string) (err error) {
+
+	if c.Key == "SANDBOX_SUCCESS" {
+		return nil
+	}
+
+	if c.Key == "SANDBOX_ERROR" {
+		return errors.New("SANDBOX_ERROR")
+	}
+	data.Key = c.Key
+	payload, _ := json.Marshal(data)
+
+	resp, err := c.HTTPClient.Post(c.BaseURL+path, "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		resError := &Error{}
+		err = json.Unmarshal(body, resError)
+		return resError
+	}
+
+	return nil
 }
 
 // AddRecipient appends a recipient to the message
